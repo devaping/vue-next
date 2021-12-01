@@ -183,12 +183,13 @@ export function createAppAPI<HostElement>(
       __DEV__ && warn(`root props passed to app.mount() must be an object.`)
       rootProps = null
     }
-
+    // 创建app上下文
     const context = createAppContext()
     const installedPlugins = new Set()
 
     let isMounted = false
-
+    // 就是入口创建的那个app
+    // const app = Vue.createApp({})
     const app: App = (context.app = {
       _uid: uid++,
       _component: rootComponent as ConcreteComponent,
@@ -261,13 +262,16 @@ export function createAppAPI<HostElement>(
 
       directive(name: string, directive?: Directive) {
         if (__DEV__) {
+          // 检测指令名是否和内置的指令（如 v-model、v-show）冲突
           validateDirectiveName(name)
         }
 
         if (!directive) {
+          // 没有第二个参数，则获取对应的指令对象
           return context.directives[name] as any
         }
         if (__DEV__ && context.directives[name]) {
+           // 重复注册的警告
           warn(`Directive "${name}" has already been registered in target app.`)
         }
         context.directives[name] = directive
@@ -280,12 +284,14 @@ export function createAppAPI<HostElement>(
         isSVG?: boolean
       ): any {
         if (!isMounted) {
+          // 创建根组件vnode
           const vnode = createVNode(
             rootComponent as ConcreteComponent,
             rootProps
           )
           // store app context on the root VNode.
           // this will be set on the root instance on initial mount.
+          // vnode关联app上下文
           vnode.appContext = context
 
           // HMR root reload
@@ -298,8 +304,10 @@ export function createAppAPI<HostElement>(
           if (isHydrate && hydrate) {
             hydrate(vnode as VNode<Node, Element>, rootContainer as any)
           } else {
+            // 渲染根组件vnode
             render(vnode, rootContainer, isSVG)
           }
+          // 标记为已挂载
           isMounted = true
           app._container = rootContainer
           // for devtools and telemetry
@@ -309,7 +317,8 @@ export function createAppAPI<HostElement>(
             app._instance = vnode.component
             devtoolsInitApp(app, version)
           }
-
+          // 返回代理 VM
+          // const vm = app.mount('#app')
           return getExposeProxy(vnode.component!) || vnode.component!.proxy
         } else if (__DEV__) {
           warn(

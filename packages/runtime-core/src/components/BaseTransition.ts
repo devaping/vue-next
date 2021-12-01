@@ -149,6 +149,7 @@ const BaseTransitionImpl: ComponentOptions = {
       }
 
       // warn multiple elements
+      // Transition 组件只允许一个子元素节点，多个报警告，提示使用 TransitionGroup 组件
       if (__DEV__ && children.length > 1) {
         warn(
           '<transition> can only be used on a single element or component. Use ' +
@@ -158,6 +159,7 @@ const BaseTransitionImpl: ComponentOptions = {
 
       // there's no need to track reactivity for these props so use the raw
       // props for a bit better perf
+      // 不需要追踪响应式，所以改成原始值，提升性能
       const rawProps = toRaw(props)
       const { mode } = rawProps
       // check mode
@@ -170,6 +172,7 @@ const BaseTransitionImpl: ComponentOptions = {
       }
 
       // at this point children has a guaranteed length of 1.
+      // 获取第一个子元素节点
       const child = children[0]
       if (state.isLeaving) {
         return emptyPlaceholder(child)
@@ -177,17 +180,22 @@ const BaseTransitionImpl: ComponentOptions = {
 
       // in the case of <transition><keep-alive/></transition>, we need to
       // compare the type of the kept-alive children.
+      // 处理 <transition><keep-alive/></transition> 的情况
+      // 如果 Transition 组件内部嵌套的是 KeepAlive 组件，
+      // 那么它会继续查找 KeepAlive 组件嵌套的第一个子元素节点，来作为渲染的元素节点
       const innerChild = getKeepAliveChild(child)
       if (!innerChild) {
         return emptyPlaceholder(child)
       }
 
+      // 定义组件创建和删除阶段的钩子函数对象
       const enterHooks = resolveTransitionHooks(
         innerChild,
         rawProps,
         state,
         instance
       )
+      // 把这个钩子函数对象设置到 vnode.transition
       setTransitionHooks(innerChild, enterHooks)
 
       const oldChild = instance.subTree
@@ -218,17 +226,27 @@ const BaseTransitionImpl: ComponentOptions = {
           instance
         )
         // update old tree's hooks in case of dynamic transition
+        // 更新旧树的钩子函数
         setTransitionHooks(oldInnerChild, leavingHooks)
         // switching between different views
+        // 在两个视图之间切换
+        // 在 out-in 模式下，当前元素先进行过渡，完成之后新元素过渡进入
         if (mode === 'out-in') {
+          /**
+           *  当模式为 out-in 的时候，会标记 state.isLeaving 为 true，然后返回一个空的注释节点，同时更新当前元素的钩子函数中的 afterLeave 函数，内部执行 instance.update 重新渲染组件。
+           *  这样做就保证了在当前元素执行离开过渡的时候，新元素只渲染成一个注释节点，这样页面上看上去还是只执行当前元素的离开过渡动画。
+           *  然后当离开动画执行完毕后，触发了 Transition 组件的重新渲染，这个时候就可以如期渲染新元素并执行进入过渡动画了，是不是很巧妙呢？
+           */
           state.isLeaving = true
           // return placeholder node and queue update when leave finishes
+          // 返回空的占位符节点，当离开过渡结束后，重新渲染组件
           leavingHooks.afterLeave = () => {
             state.isLeaving = false
             instance.update()
           }
           return emptyPlaceholder(child)
         } else if (mode === 'in-out' && innerChild.type !== Comment) {
+          // 在 in-out 模式下，新元素先进行过渡，完成之后当前元素过渡离开。
           leavingHooks.delayLeave = (
             el: TransitionElement,
             earlyRemove,
@@ -317,7 +335,7 @@ export function resolveTransitionHooks(
         args
       )
   }
-
+  // mountElement 元素或者unmountElement元素的时候会调用
   const hooks: TransitionHooks<TransitionElement> = {
     mode,
     persisted,
@@ -376,16 +394,19 @@ export function resolveTransitionHooks(
       })
       if (hook) {
         hook(el, done)
+        // 只有一个参数或者没有参数同步执行done
         if (hook.length <= 1) {
           done()
         }
       } else {
+        // 没有定义钩子也同步执行
         done()
       }
     },
 
     leave(el, remove) {
       const key = String(vnode.key)
+      // 如果enter阶段还没完成则取消
       if (el._enterCb) {
         el._enterCb(true /* cancelled */)
       }

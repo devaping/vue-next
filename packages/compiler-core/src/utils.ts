@@ -226,6 +226,7 @@ export function advancePositionWithMutation(
   let linesCount = 0
   let lastNewLinePos = -1
   for (let i = 0; i < numberOfCharacters; i++) {
+    // 换行字符
     if (source.charCodeAt(i) === 10 /* newline char code */) {
       linesCount++
       lastNewLinePos = i

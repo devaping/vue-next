@@ -15,6 +15,7 @@ import {
 // which maintains a Set of subscribers, but we simply store them as
 // raw Sets to reduce memory overhead.
 type KeyToDepMap = Map<any, Dep>
+// 原始数据对象 map
 const targetMap = new WeakMap<any, KeyToDepMap>()
 
 // The number of effects currently being tracked recursively.
@@ -43,8 +44,9 @@ export type DebuggerEventExtraInfo = {
   oldValue?: any
   oldTarget?: Map<any, any> | Set<any>
 }
-
+// effect栈
 const effectStack: ReactiveEffect[] = []
+// 当前激活的 effect
 let activeEffect: ReactiveEffect | undefined
 
 export const ITERATE_KEY = Symbol(__DEV__ ? 'iterate' : '')
@@ -191,10 +193,12 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
   }
   let depsMap = targetMap.get(target)
   if (!depsMap) {
+    // 每个 target 对应一个 depsMap
     targetMap.set(target, (depsMap = new Map()))
   }
   let dep = depsMap.get(key)
   if (!dep) {
+    // 一个key对应一个dep
     depsMap.set(key, (dep = createDep()))
   }
 
@@ -248,9 +252,11 @@ export function trigger(
   oldValue?: unknown,
   oldTarget?: Map<unknown, unknown> | Set<unknown>
 ) {
+  // 通过 targetMap 拿到 target 对应的依赖集合
   const depsMap = targetMap.get(target)
   if (!depsMap) {
     // never been tracked
+    // 没有依赖，直接返回
     return
   }
 
@@ -267,6 +273,7 @@ export function trigger(
     })
   } else {
     // schedule runs for SET | ADD | DELETE
+    // SET | ADD | DELETE 操作之一，添加对应的 effects
     if (key !== void 0) {
       deps.push(depsMap.get(key))
     }

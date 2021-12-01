@@ -112,12 +112,15 @@ const KeepAliveImpl: ComponentOptions = {
         o: { createElement }
       }
     } = sharedContext
+
+    // 切换不显示的节点 放在这个div中存住
     const storageContainer = createElement('div')
 
     sharedContext.activate = (vnode, container, anchor, isSVG, optimized) => {
       const instance = vnode.component!
       move(vnode, container, anchor, MoveType.ENTER, parentSuspense)
       // in case props have changed
+      // props 可能发生变化了执行 patch 方法更新组件
       patch(
         instance.vnode,
         vnode,
@@ -129,6 +132,7 @@ const KeepAliveImpl: ComponentOptions = {
         vnode.slotScopeIds,
         optimized
       )
+      // 在组件渲染完毕后，执行子节点及孙子节点组件定义的 activated 钩子函数
       queuePostRenderEffect(() => {
         instance.isDeactivated = false
         if (instance.a) {
@@ -149,6 +153,7 @@ const KeepAliveImpl: ComponentOptions = {
     sharedContext.deactivate = (vnode: VNode) => {
       const instance = vnode.component!
       move(vnode, storageContainer, null, MoveType.LEAVE, parentSuspense)
+      // 在组件渲染完毕后，执行子节点及孙子节点组件定义的 deactivated 钩子函数
       queuePostRenderEffect(() => {
         if (instance.da) {
           invokeArrayFns(instance.da)
@@ -195,6 +200,8 @@ const KeepAliveImpl: ComponentOptions = {
     }
 
     // prune cache on include/exclude prop change
+    // 当 include 发生变化的时候，从缓存中删除那些 name 不匹配 include 的 vnode 节点
+    // 当 exclude 发生变化的时候，从缓存中删除那些 name 匹配 exclude 的 vnode 节点
     watch(
       () => [props.include, props.exclude],
       ([include, exclude]) => {
@@ -213,21 +220,26 @@ const KeepAliveImpl: ComponentOptions = {
         cache.set(pendingCacheKey, getInnerChild(instance.subTree))
       }
     }
+    // 每次挂载完毕缓存当前vnode对应的subTree
     onMounted(cacheSubtree)
+    // 每次更新完毕缓存新的vnode对应的subTree
     onUpdated(cacheSubtree)
 
+    // 当 KeepAlive 所在的组件(也就是它的父组件或者祖先)卸载时，由于卸载的递归特性，
+    // 也会触发 KeepAlive 组件的卸载，在卸载的过程中会执行 onBeforeUnmount 钩子函数
     onBeforeUnmount(() => {
       cache.forEach(cached => {
         const { subTree, suspense } = instance
         const vnode = getInnerChild(subTree)
         if (cached.type === vnode.type) {
           // current instance will be unmounted as part of keep-alive's unmount
+          // 重置shapeFlag让它恢复成正常的vnode patch时执行正常卸载逻辑
           resetShapeFlag(vnode)
           // but invoke its deactivated hook here
           const da = vnode.component!.da
           da && queuePostRenderEffect(da, suspense)
-          return
         }
+        // 如果不是当前激活组件 需要手动执行卸载 因为它不在整颗vnode树上patch不到
         unmount(cached)
       })
     })
@@ -241,6 +253,7 @@ const KeepAliveImpl: ComponentOptions = {
 
       const children = slots.default()
       const rawVNode = children[0]
+      // keep-alive组件只能有一个子节点
       if (children.length > 1) {
         if (__DEV__) {
           warn(`KeepAlive should contain exactly one component child.`)
@@ -252,15 +265,18 @@ const KeepAliveImpl: ComponentOptions = {
         (!(rawVNode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) &&
           !(rawVNode.shapeFlag & ShapeFlags.SUSPENSE))
       ) {
+        // 不是一个vnode 或者 （不是一个组件 并且不是一个SUSPENSE）
         current = null
         return rawVNode
       }
-
+      // 非SUSPENSE  vnode === rawVNode
       let vnode = getInnerChild(rawVNode)
+      // 组件对象
       const comp = vnode.type as ConcreteComponent
 
       // for async components, name check should be based in its loaded
       // inner component if available
+      // 获取组件名称
       const name = getComponentName(
         isAsyncWrapper(vnode)
           ? (vnode.type as ComponentOptions).__asyncResolved || {}
@@ -268,7 +284,7 @@ const KeepAliveImpl: ComponentOptions = {
       )
 
       const { include, exclude, max } = props
-
+      // 没有匹配上或者被排除了都不应该被缓存
       if (
         (include && (!name || !matches(include, name))) ||
         (exclude && name && matches(exclude, name))
@@ -303,18 +319,22 @@ const KeepAliveImpl: ComponentOptions = {
           setTransitionHooks(vnode, vnode.transition!)
         }
         // avoid vnode being mounted as fresh
+        // 避免 vnode 节点作为新节点被挂载 pacth阶段会特殊处理
         vnode.shapeFlag |= ShapeFlags.COMPONENT_KEPT_ALIVE
         // make this key the freshest
+        // 让这个 key 始终新鲜
         keys.delete(key)
         keys.add(key)
       } else {
         keys.add(key)
         // prune oldest entry
+        // 删除最久不用的 key，符合 LRU 思想
         if (max && keys.size > parseInt(max as string, 10)) {
           pruneCacheEntry(keys.values().next().value)
         }
       }
       // avoid vnode being unmounted
+      // 避免 vnode 被卸载
       vnode.shapeFlag |= ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE
 
       current = vnode
@@ -383,12 +403,16 @@ function registerKeepAliveHook(
       }
       return hook()
     })
+  // 就是往 target.hooks 里面存wrappedHook
   injectHook(type, wrappedHook, target)
   // In addition to registering it on the target instance, we walk up the parent
   // chain and register it on all ancestor instances that are keep-alive roots.
   // This avoids the need to walk the entire component tree when invoking these
   // hooks, and more importantly, avoids the need to track child components in
   // arrays.
+  // 如果下面有很多级的子组件 那么子组件的钩子注册的时候都会递归往上查找到并注册到keep-alive根的祖先实例上。
+  // 执行keep-alive的第一个子组件上的钩子也就执行了子孙组件的钩子
+  // 子组件的钩子初始化的时候就已经bind了this所以执行this指向不会有问题
   if (target) {
     let current = target.parent
     while (current && current.parent) {

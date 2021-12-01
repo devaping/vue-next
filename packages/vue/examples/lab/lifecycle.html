@@ -1,0 +1,198 @@
+<script src="../../dist/vue.global.js"></script>
+
+<!-- item template -->
+<script type="text/x-template" id="item-template">
+ <div>child two {{msg}}</div>
+ <child-third :msg="msg"></child-third>
+</script>
+
+<script type="text/x-template" id="item-third-template">
+  <div>child third {{msg}}</div>
+ </script>
+<!-- item script -->
+<script>
+  const { reactive, computed, toRefs,toRef } = Vue
+  let log = (lifecyle) => { console.log(lifecyle) }
+  let childTwoLog = (lifecyle) => {
+    log("\tchildTwo：" + lifecyle)
+  }
+
+  let childThirdLog = (lifecyle) => {
+    log("\t\tchildThird：" + lifecyle)
+  }
+  
+  const ChildThird = {
+    name: 'ChildThird', // necessary for self-reference
+    template: '#item-third-template',
+    props: {
+      msg: String
+    },
+    beforeCreate() {
+      childThirdLog('beforeCreate')
+    },
+    created() {
+      childThirdLog('created')
+    },
+    beforeMount() {
+      childThirdLog('beforeMount')
+    },
+    mounted() {
+      childThirdLog('mounted')
+    },
+    activated(){
+      childThirdLog('activated')
+    },
+    deactivated(){
+      childThirdLog('deactivated')
+    },
+    beforeUpdate() {
+      childThirdLog('beforeUpdate')
+    },
+    updated() {
+      childThirdLog('updated')
+    },
+    beforeUnmount() {
+      childThirdLog('beforeUnmount')
+    },
+    unmounted() {
+      childThirdLog('unmounted')
+    },
+    setup(props) {
+      childThirdLog('setup')
+       return {
+         //msg: props.msg
+       }
+     }
+  }
+
+  const ChildTwo = {
+    components:{
+      ChildThird
+    },
+    name: 'ChildTwo', // necessary for self-reference
+    template: '#item-template',
+    props: {
+      msg: String
+    },
+    beforeCreate() {
+      childTwoLog('beforeCreate')
+    },
+    created() {
+      childTwoLog('created')
+    },
+    beforeMount() {
+      childTwoLog('beforeMount')
+    },
+    mounted() {
+      childTwoLog('mounted')
+    },
+    activated(){
+      childTwoLog('activated')
+    },
+    deactivated(){
+      childTwoLog('deactivated')
+    },
+    beforeUpdate() {
+      childTwoLog('beforeUpdate')
+    },
+    updated() {
+      childTwoLog('updated')
+    },
+    beforeUnmount() {
+      childTwoLog('beforeUnmount')
+    },
+    unmounted() {
+      childTwoLog('unmounted')
+    },
+    setup(props) {
+      childTwoLog('setup')
+      return {
+     
+        // msg: props.msg
+      }
+    }
+  }
+
+</script>
+
+<!-- the app root element -->
+<ul id="demo">
+  <keep-alive>
+    <child-two v-if="isShow" class="item" :msg="msg"></child-two>
+  </keep-alive>
+  {{a}}
+  <button @click="onUpdateClick">更新</button>
+  <button @click="onUnmountClick">销毁</button>
+  <button @click="onActivedClick">激活</button>
+  <!-- <button @click="onUnmountClick">销毁</button> -->
+</ul>
+
+<script>
+
+  Vue.createApp({
+    components: {
+      ChildTwo
+    },
+    data: () => ({
+      msg: 'hell0',
+      isShow: true,
+      a: new Date()
+    }),
+    beforeCreate() {
+      log('beforeCreate')
+    },
+    created() {
+      log('created')
+    },
+    beforeMount() {
+      log('beforeMount')
+    },
+    mounted() {
+      log('mounted')
+    },
+    beforeUpdate() {
+      log('beforeUpdate')
+    },
+    updated() {
+      log('updated')
+    },
+    beforeUnmount() {
+      log('beforeUnmount')
+    },
+    unmounted() {
+      log('unmounted')
+    },
+    methods: {
+      onUpdateClick() {
+        this.msg = 'new hello'
+      },
+      onUnmountClick(){
+        this.isShow = false;
+      },
+      onActivedClick(){
+        this.isShow = true;
+      }
+    }
+  }).mount('#demo')
+</script>
+
+<style>
+  body {
+    font-family: Menlo, Consolas, monospace;
+    color: #444;
+  }
+
+  .item {
+    cursor: pointer;
+  }
+
+  .bold {
+    font-weight: bold;
+  }
+
+  ul {
+    padding-left: 1em;
+    line-height: 1.5em;
+    list-style-type: dot;
+  }
+</style>

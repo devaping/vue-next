@@ -1,3 +1,4 @@
+
 import { DebuggerOptions, ReactiveEffect } from './effect'
 import { Ref, trackRefValue, triggerRefValue } from './ref'
 import { isFunction, NOOP } from '@vue/shared'
@@ -80,15 +81,15 @@ export function computed<T>(
 
   const onlyGetter = isFunction(getterOrOptions)
   if (onlyGetter) {
-    getter = getterOrOptions
+    getter = getterOrOptions as ComputedGetter<T>
     setter = __DEV__
       ? () => {
           console.warn('Write operation failed: computed value is readonly')
         }
       : NOOP
   } else {
-    getter = getterOrOptions.get
-    setter = getterOrOptions.set
+    getter = (getterOrOptions as WritableComputedOptions<T>).get
+    setter = (getterOrOptions as WritableComputedOptions<T>).set
   }
 
   const cRef = new ComputedRefImpl(getter, setter, onlyGetter || !setter)
@@ -100,3 +101,4 @@ export function computed<T>(
 
   return cRef as any
 }
+ 

@@ -335,6 +335,7 @@ export function shouldUpdateComponent(
   }
 
   // force child update for runtime directive or transition on component vnode.
+  // 有指令 或者transition动画需要强制更新
   if (nextVNode.dirs || nextVNode.transition) {
     return true
   }
@@ -342,14 +343,17 @@ export function shouldUpdateComponent(
   if (optimized && patchFlag >= 0) {
     if (patchFlag & PatchFlags.DYNAMIC_SLOTS) {
       // slot content that references values that might have changed,
+      // 动态插槽需要更新
       // e.g. in a v-for
       return true
     }
     if (patchFlag & PatchFlags.FULL_PROPS) {
       if (!prevProps) {
+        // 旧的没有Props,新的有Props需要更新
         return !!nextProps
       }
       // presence of this flag indicates props are always non-null
+      // 检测是否有属性发生改变
       return hasPropsChanged(prevProps, nextProps!, emits)
     } else if (patchFlag & PatchFlags.PROPS) {
       const dynamicProps = nextVNode.dynamicProps!
@@ -371,18 +375,23 @@ export function shouldUpdateComponent(
         return true
       }
     }
+    // 新旧props相等不需要更新
     if (prevProps === nextProps) {
       return false
     }
+    // 旧的没有Props，新的有Props需要更新
     if (!prevProps) {
       return !!nextProps
     }
+    // 新的有Props没有了也需要更新
     if (!nextProps) {
       return true
     }
+     // 检测是否有属性发生改变
     return hasPropsChanged(prevProps, nextProps, emits)
   }
 
+  // 默认返回false
   return false
 }
 

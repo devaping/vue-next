@@ -1,0 +1,86 @@
+<script src="../../dist/vue.global.js"></script>
+<script type="text/x-template" id="item-template">
+    <div>
+      <p>{{ msg }}</p>
+      <p>{{ info.name }}</p>
+      <p>{{ info.age.age }}</p>
+      <p>{{ state.nested.bar }}</p>
+    </div>
+  </script>
+<script>
+    const { onRenderTriggered, onRenderTracked, shallowReactive,effect } = Vue;
+    const HelloWorld = {
+        props: {
+            msg: String,
+            info: Object
+        },
+        template: '#item-template',
+        setup() {
+
+            let state = shallowReactive({
+                foo: 1,
+                nested: {
+                    bar: 2
+                }
+            })
+            effect(()=>{
+                console.log(state.nested.bar)
+            })
+           setTimeout(()=>{
+            state.nested.bar++
+            alert(1)
+           },2000)
+            onRenderTriggered((...args) => {
+                console.log('sub-----------onRenderTriggered');
+                console.dir(args[0])
+            })
+
+            onRenderTracked((...args) => {
+                console.log('sub------onRenderTracked');
+                console.dir(args[0])
+            })
+            return {
+                state
+            }
+        }
+    }
+</script>
+
+<div id="app">
+    <hello-world :msg="msg" :info="info"></hello-world>
+    <button @click="addAge">Add age</button>
+    <button @click="toggleMsg">Toggle Msg</button>
+</div>
+<script>
+    const { ref, computed, reactive } = Vue
+    Vue.createApp({
+        components: { HelloWorld },
+        data() {
+            return {
+                info: {
+                    name: 'Tom',
+                    age: {
+                        age: 18
+                    }
+                },
+                msg: 'Hello world'
+            }
+        },
+        methods: {
+            addAge() {
+                this.info.age.age++
+            },
+            toggleMsg() {
+                this.msg = this.msg === 'Hello world' ? 'Hello Vue' : 'Hello world'
+            }
+        },
+        renderTriggered() {
+            console.log('parent-----renderTriggered');
+            console.dir(Array.from(arguments)[0])
+        },
+        renderTracked() {
+            console.log('parent------renderTracked');
+            console.dir(Array.from(arguments)[0])
+        }
+    }).mount('#app')
+</script>

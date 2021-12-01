@@ -145,12 +145,15 @@ function createCodegenContext(
       }
     },
     indent() {
+      // 添加一个换行符，以及两倍indentLevel 对应的空格来表示缩进的长度
       newline(++context.indentLevel)
     },
     deindent(withoutNewLine = false) {
+      // 不换行只是单纯减少缩进
       if (withoutNewLine) {
         --context.indentLevel
       } else {
+        // 添加一个换行符，并减少两倍indentLevel 对应的空格的缩进长度
         newline(--context.indentLevel)
       }
     },
@@ -193,6 +196,7 @@ export function generate(
     onContextCreated?: (context: CodegenContext) => void
   } = {}
 ): CodegenResult {
+   // 1. 创建代码生成上下文
   const context = createCodegenContext(ast, options)
   if (options.onContextCreated) options.onContextCreated(context)
   const {
@@ -217,6 +221,7 @@ export function generate(
   const preambleContext = isSetupInlined
     ? createCodegenContext(ast, options)
     : context
+  // 2. 生成预设代码
   if (!__BROWSER__ && mode === 'module') {
     genModulePreamble(ast, preambleContext, genScopeId, isSetupInlined)
   } else {
@@ -234,6 +239,7 @@ export function generate(
       ? args.map(arg => `${arg}: any`).join(',')
       : args.join(', ')
 
+  // 3.生成渲染函数
   if (isSetupInlined) {
     push(`(${signature}) => {`)
   } else {
@@ -242,6 +248,7 @@ export function generate(
   indent()
 
   if (useWithBlock) {
+    // 处理带 with 的情况，Web 端运行时编译  
     push(`with (_ctx) {`)
     indent()
     // function mode const declarations should be inside with block
@@ -256,14 +263,16 @@ export function generate(
       newline()
     }
   }
-
+  // 4.生成资源声明代码
   // generate asset resolution statements
+  // 生成自定义组件声明代码
   if (ast.components.length) {
     genAssets(ast.components, 'component', context)
     if (ast.directives.length || ast.temps > 0) {
       newline()
     }
   }
+  // 生成自定义指令声明代码
   if (ast.directives.length) {
     genAssets(ast.directives, 'directive', context)
     if (ast.temps > 0) {
@@ -276,6 +285,7 @@ export function generate(
     newline()
   }
 
+  // 生成临时变量代码
   if (ast.temps > 0) {
     push(`let `)
     for (let i = 0; i < ast.temps; i++) {
@@ -291,6 +301,7 @@ export function generate(
   if (!ssr) {
     push(`return `)
   }
+  // 5.生成创建 VNode 树的表达式
   if (ast.codegenNode) {
     genNode(ast.codegenNode, context)
   } else {
@@ -387,12 +398,13 @@ function genModulePreamble(
     runtimeModuleName,
     ssrRuntimeModuleName
   } = context
-
+  // 处理 scopeId
   if (genScopeId && ast.hoists.length) {
     ast.helpers.push(PUSH_SCOPE_ID, POP_SCOPE_ID)
   }
 
   // generate import statements for helpers
+  // 生成 import 声明代码
   if (ast.helpers.length) {
     if (optimizeImports) {
       // when bundled with webpack with code-split, calling an import binding
@@ -418,7 +430,7 @@ function genModulePreamble(
       )
     }
   }
-
+  // 处理 ssrHelpers
   if (ast.ssrHelpers && ast.ssrHelpers.length) {
     push(
       `import { ${ast.ssrHelpers
@@ -427,6 +439,7 @@ function genModulePreamble(
     )
   }
 
+  // 处理 imports
   if (ast.imports.length) {
     genImports(ast.imports, context)
     newline()
@@ -755,7 +768,9 @@ function genVNodeCall(node: VNodeCall, context: CodegenContext) {
   const callHelper: symbol = isBlock
     ? getVNodeBlockHelper(context.inSSR, isComponent)
     : getVNodeHelper(context.inSSR, isComponent)
+  // _createBlock函数
   push(helper(callHelper) + `(`, node)
+  // 生成_createBlock 的参数
   genNodeList(
     genNullableArgs([tag, props, children, patchFlag, dynamicProps]),
     context
@@ -876,6 +891,7 @@ function genConditionalExpression(
 ) {
   const { test, consequent, alternate, newline: needNewline } = node
   const { push, indent, deindent, newline } = context
+  // 生成条件表达式
   if (test.type === NodeTypes.SIMPLE_EXPRESSION) {
     const needsParens = !isSimpleIdentifier(test.content)
     needsParens && push(`(`)
@@ -886,14 +902,17 @@ function genConditionalExpression(
     genNode(test, context)
     push(`)`)
   }
+   // 换行加缩进
   needNewline && indent()
   context.indentLevel++
   needNewline || push(` `)
+  // 生成主逻辑代码
   push(`? `)
   genNode(consequent, context)
   context.indentLevel--
   needNewline && newline()
   needNewline || push(` `)
+  // 生成备选逻辑代码
   push(`: `)
   const isNested = alternate.type === NodeTypes.JS_CONDITIONAL_EXPRESSION
   if (!isNested) {

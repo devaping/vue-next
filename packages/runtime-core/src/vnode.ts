@@ -502,6 +502,7 @@ function _createVNode(
     // #2078 make sure to merge refs during the clone instead of overwriting it
     const cloned = cloneVNode(type, props, true /* mergeRef: true */)
     if (children) {
+      // 标准化子节点，把不同数据类型的 children 转成数组或者文本类型
       normalizeChildren(cloned, children)
     }
     return cloned
@@ -518,6 +519,7 @@ function _createVNode(
   }
 
   // class & style normalization.
+  // 处理 props 相关逻辑，标准化 class 和 style
   if (props) {
     // for reactive or proxy objects, we need to clone it to enable mutation.
     props = guardReactiveProps(props)!
@@ -536,6 +538,7 @@ function _createVNode(
   }
 
   // encode the vnode type information into a bitmap
+  // 对 vnode 类型信息编码
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
     : __FEATURE_SUSPENSE__ && isSuspense(type)
@@ -559,7 +562,7 @@ function _createVNode(
       type
     )
   }
-
+  // 创建 vnode 对象
   return createBaseVNode(
     type,
     props,
@@ -732,6 +735,8 @@ export function normalizeChildren(vnode: VNode, children: unknown) {
   } else if (typeof children === 'object') {
     if (shapeFlag & (ShapeFlags.ELEMENT | ShapeFlags.TELEPORT)) {
       // Normalize slot to plain children for plain element and Teleport
+      // 标准化 slot 子节点
+      // 处理 Teleport 的情况
       const slot = (children as any).default
       if (slot) {
         // _c marker is added by withCtx() indicating this is a compiled slot
@@ -741,6 +746,7 @@ export function normalizeChildren(vnode: VNode, children: unknown) {
       }
       return
     } else {
+      // 确定 vnode 子节点类型为 slot 子节点
       type = ShapeFlags.SLOTS_CHILDREN
       const slotFlag = (children as RawSlots)._
       if (!slotFlag && !(InternalObjectKey in children!)) {
@@ -750,6 +756,7 @@ export function normalizeChildren(vnode: VNode, children: unknown) {
       } else if (slotFlag === SlotFlags.FORWARDED && currentRenderingInstance) {
         // a child component receives forwarded slots from the parent.
         // its slot type is determined by its parent's slot type.
+        // 处理类型为 FORWARDED 的情况
         if (
           (currentRenderingInstance.slots as RawSlots)._ === SlotFlags.STABLE
         ) {

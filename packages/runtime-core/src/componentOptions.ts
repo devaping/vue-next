@@ -562,6 +562,7 @@ export function applyOptions(instance: ComponentInternalInstance) {
     provide: provideOptions,
     inject: injectOptions,
     // lifecycle
+    // 生命周期
     created,
     beforeMount,
     mounted,

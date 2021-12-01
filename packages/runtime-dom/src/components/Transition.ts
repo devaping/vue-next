@@ -168,6 +168,7 @@ export function resolveTransitionProps(
     onAppearCancelled = onEnterCancelled
   } = baseProps
 
+  // enter完成 删除 enterToClass和enterActiveClass
   const finishEnter = (el: Element, isAppear: boolean, done?: () => void) => {
     removeTransitionClass(el, isAppear ? appearToClass : enterToClass)
     removeTransitionClass(el, isAppear ? appearActiveClass : enterActiveClass)
@@ -194,6 +195,7 @@ export function resolveTransitionProps(
           )
         }
         addTransitionClass(el, isAppear ? appearToClass : enterToClass)
+        // 用户没有明确调用done 则监听动画结束事件兜底
         if (!hasExplicitCallback(hook)) {
           whenTransitionEnds(el, type, enterDuration, resolve)
         }
@@ -203,6 +205,7 @@ export function resolveTransitionProps(
 
   return extend(baseProps, {
     onBeforeEnter(el) {
+      // 调用用户自定义的onBeforeEnter钩子
       callHook(onBeforeEnter, [el])
       addTransitionClass(el, enterFromClass)
       if (__COMPAT__ && legacyClassEnabled) {
@@ -227,6 +230,7 @@ export function resolveTransitionProps(
         addTransitionClass(el, legacyLeaveFromClass)
       }
       // force reflow so *-leave-from classes immediately take effect (#2593)
+      // 强制回流使*-leave-from 这类样式立即生效
       forceReflow()
       addTransitionClass(el, leaveActiveClass)
       nextFrame(() => {

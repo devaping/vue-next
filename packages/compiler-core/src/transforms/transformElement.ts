@@ -77,6 +77,7 @@ const directiveImportMap = new WeakMap<DirectiveNode, symbol>()
 export const transformElement: NodeTransform = (node, context) => {
   // perform the work on exit, after all child expressions have been
   // processed and merged.
+  // 返回退出函数，在所有子表达式处理并合并后执行
   return function postTransformElement() {
     node = context.currentNode!
 
@@ -89,7 +90,7 @@ export const transformElement: NodeTransform = (node, context) => {
     ) {
       return
     }
-
+    // 转换的目标是创建一个实现 VNodeCall 接口的代码生成节点
     const { tag, props } = node
     const isComponent = node.tagType === ElementTypes.COMPONENT
 
@@ -101,15 +102,19 @@ export const transformElement: NodeTransform = (node, context) => {
 
     const isDynamicComponent =
       isObject(vnodeTag) && vnodeTag.callee === RESOLVE_DYNAMIC_COMPONENT
-
+    // 属性
     let vnodeProps: VNodeCall['props']
+    // 子节点
     let vnodeChildren: VNodeCall['children']
+    // 标记更新的类型标识，用于运行时优化
     let vnodePatchFlag: VNodeCall['patchFlag']
     let patchFlag: number = 0
+    // 动态绑定的属性
     let vnodeDynamicProps: VNodeCall['dynamicProps']
     let dynamicPropNames: string[] | undefined
     let vnodeDirectives: VNodeCall['directives']
-
+    
+    // 动态组件、teleport、suspense、 svg、foreignObject 标签以及动态绑定 key prop 的节点都被视作一个 Block
     let shouldUseBlock =
       // dynamic component may resolve to plain elements
       isDynamicComponent ||
@@ -126,7 +131,9 @@ export const transformElement: NodeTransform = (node, context) => {
           findProp(node, 'key', true)))
 
     // props
+    // 处理 props
     if (props.length > 0) {
+      // 从props 对象中进一步解析出指令 vnodeDirectives、动态属性 dynamicPropNames，以及更新标识 patchFlag。
       const propsBuildResult = buildProps(node, context)
       vnodeProps = propsBuildResult.props
       patchFlag = propsBuildResult.patchFlag
@@ -141,6 +148,7 @@ export const transformElement: NodeTransform = (node, context) => {
     }
 
     // children
+    // 处理 children
     if (node.children.length > 0) {
       if (vnodeTag === KEEP_ALIVE) {
         // Although a built-in component, we compile KeepAlive with raw children
@@ -149,8 +157,10 @@ export const transformElement: NodeTransform = (node, context) => {
         // To ensure correct updates with block optimizations, we need to:
         // 1. Force keep-alive into a block. This avoids its children being
         //    collected by a parent block.
+        // 把 KeepAlive 看做是一个 Block，这样可以避免它的子节点的动态节点被父 Block 收集
         shouldUseBlock = true
         // 2. Force keep-alive to always be updated, since it uses raw children.
+        // 2. 确保它始终更新
         patchFlag |= PatchFlags.DYNAMIC_SLOTS
         if (__DEV__ && node.children.length > 1) {
           context.onError(
@@ -166,17 +176,25 @@ export const transformElement: NodeTransform = (node, context) => {
       const shouldBuildAsSlots =
         isComponent &&
         // Teleport is not a real component and has dedicated runtime handling
+        // Teleport、keep-alive不是一个真正的组件，它有专门的运行时处理
         vnodeTag !== TELEPORT &&
         // explained above.
         vnodeTag !== KEEP_ALIVE
 
       if (shouldBuildAsSlots) {
+        // 组件有 children，则处理插槽
+        // 对于一个组件节点而言，如果它有子节点，则说明是组件的插槽
         const { slots, hasDynamicSlots } = buildSlots(node, context)
         vnodeChildren = slots
         if (hasDynamicSlots) {
           patchFlag |= PatchFlags.DYNAMIC_SLOTS
         }
       } else if (node.children.length === 1 && vnodeTag !== TELEPORT) {
+        /**
+         * 对于一个普通元素节点，我们通常直接拿节点的 children 属性给 vnodeChildren 即可，
+         * 但有一种特殊情况，如果节点只有一个子节点，并且是一个普通文本节点、插值或者表达式，
+         * 那么直接把节点赋值给 vnodeChildren。
+         */
         const child = node.children[0]
         const type = child.type
         // check for dynamic text children
@@ -191,6 +209,7 @@ export const transformElement: NodeTransform = (node, context) => {
         }
         // pass directly if the only child is a text node
         // (plain / interpolation / expression)
+         // 如果只是一个普通文本节点、插值或者表达式，直接把节点赋值给 vnodeChildren
         if (hasDynamicTextChild || type === NodeTypes.TEXT) {
           vnodeChildren = child as TemplateTextChildNode
         } else {
@@ -202,6 +221,7 @@ export const transformElement: NodeTransform = (node, context) => {
     }
 
     // patchFlag & dynamicPropNames
+     // 处理 patchFlag 和 dynamicPropNames
     if (patchFlag !== 0) {
       if (__DEV__) {
         if (patchFlag < 0) {
@@ -209,6 +229,7 @@ export const transformElement: NodeTransform = (node, context) => {
           vnodePatchFlag = patchFlag + ` /* ${PatchFlagNames[patchFlag]} */`
         } else {
           // bitwise flags
+          // 获取 flag 对应的名字，生成注释，方便理解生成代码对应节点的 pathFlag
           const flagNames = Object.keys(PatchFlagNames)
             .map(Number)
             .filter(n => n > 0 && patchFlag & n)
@@ -223,7 +244,8 @@ export const transformElement: NodeTransform = (node, context) => {
         vnodeDynamicProps = stringifyDynamicPropNames(dynamicPropNames)
       }
     }
-
+    
+    // 通过 createVNodeCall 创建了实现 VNodeCall 接口的代码生成节点
     node.codegenNode = createVNodeCall(
       context,
       vnodeTag,
@@ -248,6 +270,7 @@ export function resolveComponentType(
   let { tag } = node
 
   // 1. dynamic component
+  // 动态组件 <component :is="xxx"></component>
   const isExplicitDynamic = isComponentTag(tag)
   const isProp = findProp(node, 'is')
   if (isProp) {
@@ -289,6 +312,7 @@ export function resolveComponentType(
   }
 
   // 2. built-in components (Teleport, Transition, KeepAlive, Suspense...)
+  // 2.内置组件
   const builtIn = isCoreComponent(tag) || context.isBuiltInComponent(tag)
   if (builtIn) {
     // built-ins are simply fallthroughs / have special handling during ssr
@@ -300,6 +324,7 @@ export function resolveComponentType(
   // 3. user component (from setup bindings)
   // this is skipped in browser build since browser builds do not perform
   // binding analysis.
+  // 浏览器版本会跳过 本地编译执行
   if (!__BROWSER__) {
     const fromSetup = resolveSetupReference(tag, context)
     if (fromSetup) {
@@ -505,6 +530,7 @@ export function buildProps(
       )
     } else {
       // directives
+      // 指令
       const { name, arg, exp, loc } = prop
       const isVBind = name === 'bind'
       const isVOn = name === 'on'

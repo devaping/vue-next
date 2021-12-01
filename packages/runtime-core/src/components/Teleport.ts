@@ -92,9 +92,10 @@ export const TeleportImpl = {
       optimized = false
       dynamicChildren = null
     }
-
+    
     if (n1 == null) {
       // insert anchors in the main view
+      // 在主视图里插入注释节点或者空白文本节点
       const placeholder = (n2.el = __DEV__
         ? createComment('teleport start')
         : createText(''))
@@ -104,7 +105,7 @@ export const TeleportImpl = {
       insert(placeholder, container, anchor)
       insert(mainAnchor, container, anchor)
       const target = (n2.target = resolveTarget(n2.props, querySelector))
-      const targetAnchor = (n2.targetAnchor = createText(''))
+      const targetAnchor = (n2.targetAnchor = __DEV__ ? createComment('target anchor') : createText(''))
       if (target) {
         insert(targetAnchor, target)
         // #2652 we could be teleporting from a non-SVG tree into an SVG tree
@@ -131,6 +132,7 @@ export const TeleportImpl = {
       }
 
       if (disabled) {
+        // disabled 情况就在原先的位置挂载
         mount(container, mainAnchor)
       } else if (target) {
         mount(target, targetAnchor)
@@ -138,7 +140,7 @@ export const TeleportImpl = {
     } else {
       // update content
       n2.el = n1.el
-      const mainAnchor = (n2.anchor = n1.anchor)!
+      const mainAnchor = (n2.anchor = n1.anchor)! // -------teleport end--------
       const target = (n2.target = n1.target)!
       const targetAnchor = (n2.targetAnchor = n1.targetAnchor)!
       const wasDisabled = isTeleportDisabled(n1.props)
@@ -179,6 +181,7 @@ export const TeleportImpl = {
         if (!wasDisabled) {
           // enabled -> disabled
           // move into main container
+          // 移动回主容器
           moveTeleport(
             n2,
             container,
@@ -189,12 +192,15 @@ export const TeleportImpl = {
         }
       } else {
         // target changed
+        // target改变了需要移动到新的taget上
         if ((n2.props && n2.props.to) !== (n1.props && n1.props.to)) {
+          // 获取新的target
           const nextTarget = (n2.target = resolveTarget(
             n2.props,
             querySelector
           ))
           if (nextTarget) {
+            // 移动到新的目标元素
             moveTeleport(
               n2,
               nextTarget,
@@ -212,6 +218,7 @@ export const TeleportImpl = {
         } else if (wasDisabled) {
           // disabled -> enabled
           // move into teleport target
+          // 移动到目标元素位置
           moveTeleport(
             n2,
             target,
@@ -235,11 +242,13 @@ export const TeleportImpl = {
     const { shapeFlag, children, anchor, targetAnchor, target, props } = vnode
 
     if (target) {
+      // 删除target参考节点
       hostRemove(targetAnchor!)
     }
 
     // an unmounted teleport should always remove its children if not disabled
     if (doRemove || !isTeleportDisabled(props)) {
+      // 删除teleport end 注释节点
       hostRemove(anchor!)
       if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         for (let i = 0; i < (children as VNode[]).length; i++) {
@@ -274,6 +283,7 @@ function moveTeleport(
   moveType: TeleportMoveTypes = TeleportMoveTypes.REORDER
 ) {
   // move target anchor if this is a target change.
+  // 把targetAnchor append到新容器下也就是新target下 container ===target
   if (moveType === TeleportMoveTypes.TARGET_CHANGE) {
     insert(vnode.targetAnchor!, container, parentAnchor)
   }

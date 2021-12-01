@@ -189,6 +189,7 @@ function doWatch(
     }
   }
 
+  // source 不合法的时候会报警告 
   const warnInvalidSource = (s: unknown) => {
     warn(
       `Invalid watch source: `,
@@ -202,7 +203,7 @@ function doWatch(
   let getter: () => any
   let forceTrigger = false
   let isMultiSource = false
-
+  // 标准化source
   if (isRef(source)) {
     getter = () => source.value
     forceTrigger = !!source._shallow
@@ -235,9 +236,12 @@ function doWatch(
         if (instance && instance.isUnmounted) {
           return
         }
+        
+        // 执行清理函数 
         if (cleanup) {
           cleanup()
         }
+        // 执行 source 函数，传入 onInvalidate 作为参数 
         return callWithAsyncErrorHandling(
           source,
           instance,
@@ -316,15 +320,18 @@ function doWatch(
           isCompatEnabled(DeprecationTypes.WATCH_ARRAY, instance))
       ) {
         // cleanup before running cb again
+        // 执行清理函数 
         if (cleanup) {
           cleanup()
         }
         callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
           newValue,
           // pass undefined as the old value when it's changed for the first time
+          // 第一次更改时传递旧值为 undefined 
           oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue,
           onInvalidate
         ])
+        // 更新旧值 
         oldValue = newValue
       }
     } else {
@@ -339,17 +346,21 @@ function doWatch(
 
   let scheduler: EffectScheduler
   if (flush === 'sync') {
+    // 同步
     scheduler = job as any // the scheduler function gets called directly
   } else if (flush === 'post') {
+    // 进入异步队列，组件更新后执行
     scheduler = () => queuePostRenderEffect(job, instance && instance.suspense)
   } else {
     // default: 'pre'
     scheduler = () => {
       if (!instance || instance.isMounted) {
+        // 进入异步队列，组件更新前执行
         queuePreFlushCb(job)
       } else {
         // with 'pre' option, the first call must happen before
         // the component is mounted so it is called synchronously.
+        // 如果组件还没挂载，则同步执行确保在组件挂载前 
         job()
       }
     }

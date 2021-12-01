@@ -160,6 +160,7 @@ export function initProps(
 
   instance.propsDefaults = Object.create(null)
 
+  // 设置 props 的值
   setFullProps(instance, rawProps, props, attrs)
 
   // ensure all declared prop keys are present
@@ -170,14 +171,17 @@ export function initProps(
   }
 
   // validation
+  // 验证 props 合法
   if (__DEV__) {
     validateProps(rawProps || {}, props, instance)
   }
 
   if (isStateful) {
     // stateful
+    // 有状态组件，响应式处理
     instance.props = isSSR ? props : shallowReactive(props)
   } else {
+    // 函数式组件处理
     if (!instance.type.props) {
       // functional w/ optional props, props === attrs
       instance.props = attrs
@@ -186,6 +190,7 @@ export function initProps(
       instance.props = props
     }
   }
+  // 普通属性赋值
   instance.attrs = attrs
 }
 
@@ -219,6 +224,7 @@ export function updateProps(
     if (patchFlag & PatchFlags.PROPS) {
       // Compiler-generated props & no keys change, just set the updated
       // the props.
+      // 只更新动态 props 节点
       const propsToUpdate = instance.vnode.dynamicProps!
       for (let i = 0; i < propsToUpdate.length; i++) {
         let key = propsToUpdate[i]
@@ -260,11 +266,13 @@ export function updateProps(
     }
   } else {
     // full props update.
+    // 全量 props 更新
     if (setFullProps(instance, rawProps, props, attrs)) {
       hasAttrsChanged = true
     }
     // in case of dynamic props, check if we need to delete keys from
     // the props object
+    // 因为新的 props 可能是动态的，把那些不在新的 props 中但存在于旧的 props 中的值设置为 undefined
     let kebabKey: string
     for (const key in rawCurrentProps) {
       if (
@@ -325,12 +333,21 @@ function setFullProps(
   props: Data,
   attrs: Data
 ) {
+  
+  // instance 表示组件实例；
+  // rawProps 表示原始的 props 值，也就是创建 vnode 过程中传入的 props 数据；
+  // props 用于存储解析后的 props 数据；
+  // attrs 用于存储解析后的普通属性数据。
+  // propsOptions 已经标准化好的对象
+  // needCastKeys 需要转换的key  类型定义中含有Boolean、默认值的都需要转换
   const [options, needCastKeys] = instance.propsOptions
   let hasAttrsChanged = false
   let rawCastValues: Data | undefined
+  // 遍历 rawProps 数据求值
   if (rawProps) {
     for (let key in rawProps) {
       // key, ref are reserved and never passed down
+      // 一些保留的 prop 比如 ref、key 是不会传递的
       if (isReservedProp(key)) {
         continue
       }
@@ -351,11 +368,13 @@ function setFullProps(
       const value = rawProps[key]
       // prop option names are camelized during normalization, so to support
       // kebab -> camel conversion here we need to camelize the key.
+      // 连字符形式的 props 也转成驼峰形式
       let camelKey
       if (options && hasOwn(options, (camelKey = camelize(key)))) {
         if (!needCastKeys || !needCastKeys.includes(camelKey)) {
           props[camelKey] = value
         } else {
+          // 需要转换的用rawCastValues对象另外存储
           ;(rawCastValues || (rawCastValues = {}))[camelKey] = value
         }
       } else if (!isEmitListener(instance.emitsOptions, key)) {
@@ -369,6 +388,7 @@ function setFullProps(
             continue
           }
         }
+        // 非事件派发相关的，且不在 attrs 中定义的普通属性用 attrs 保留
         if (value !== attrs[key]) {
           attrs[key] = value
           hasAttrsChanged = true
@@ -378,6 +398,7 @@ function setFullProps(
   }
 
   if (needCastKeys) {
+    // 有需要做转换的keys
     const rawCurrentProps = toRaw(props)
     const castValues = rawCastValues || EMPTY_OBJ
     for (let i = 0; i < needCastKeys.length; i++) {
@@ -408,6 +429,7 @@ function resolvePropValue(
   if (opt != null) {
     const hasDefault = hasOwn(opt, 'default')
     // default values
+     // 默认值处理
     if (hasDefault && value === undefined) {
       const defaultValue = opt.default
       if (opt.type !== Function && isFunction(defaultValue)) {
@@ -430,13 +452,18 @@ function resolvePropValue(
       }
     }
     // boolean casting
+    // 布尔类型转换
     if (opt[BooleanFlags.shouldCast]) {
+      // 在父组件中没有传值并且没有默认值
       if (isAbsent && !hasDefault) {
         value = false
       } else if (
         opt[BooleanFlags.shouldCastTrue] &&
-        (value === '' || value === hyphenate(key))
+        (value === '' || value === hyphenate(key)) 
       ) {
+       // eg: props: { name: [Boolean, String]  } Boolean在string的前面
+       // 并且 value为空字符串或者是 key 字符串的情况
+       // hyphenate(key) 的作用 eg: isAbsent --> is-absent
         value = true
       }
     }
@@ -449,6 +476,7 @@ export function normalizePropsOptions(
   appContext: AppContext,
   asMixin = false
 ): NormalizedPropsOptions {
+  // 用于缓存标准化的结果，有缓存，则直接返回
   const cache = appContext.propsCache
   const cached = cache.get(comp)
   if (cached) {
@@ -487,6 +515,7 @@ export function normalizePropsOptions(
     return EMPTY_ARR as any
   }
 
+  // 数组形式的 props 定义
   if (isArray(raw)) {
     for (let i = 0; i < raw.length; i++) {
       if (__DEV__ && !isString(raw[i])) {
@@ -505,15 +534,20 @@ export function normalizePropsOptions(
       const normalizedKey = camelize(key)
       if (validatePropName(normalizedKey)) {
         const opt = raw[key]
+         // 标准化 prop 的定义格式
         const prop: NormalizedProp = (normalized[normalizedKey] =
           isArray(opt) || isFunction(opt) ? { type: opt } : opt)
         if (prop) {
           const booleanIndex = getTypeIndex(Boolean, prop.type)
           const stringIndex = getTypeIndex(String, prop.type)
+          // eg: props: {name: Boolean} 父组件可能没有传这个传值
           prop[BooleanFlags.shouldCast] = booleanIndex > -1
+          // eg: props: {name: Boolean,phone:String} Boolean在String字段前面 父组件可能传了 '' 或者name="name"
+          // 所以需要转换
           prop[BooleanFlags.shouldCastTrue] =
             stringIndex < 0 || booleanIndex < stringIndex
           // if the prop needs boolean casting or default value
+          // 布尔类型和有默认值的 prop 都需要转换
           if (booleanIndex > -1 || hasOwn(prop, 'default')) {
             needCastKeys.push(normalizedKey)
           }
@@ -592,20 +626,24 @@ function validateProp(
 ) {
   const { type, required, validator } = prop
   // required!
+  // 必传并且没传值
   if (required && isAbsent) {
     warn('Missing required prop: "' + name + '"')
     return
   }
   // missing but optional
+  // 虽然没有值但也没有配置 required，直接返回
   if (value == null && !prop.required) {
     return
   }
   // type check
+  // 类型检测
   if (type != null && type !== true) {
     let isValid = false
     const types = isArray(type) ? type : [type]
     const expectedTypes = []
     // value is valid as long as one of the specified types match
+    // 只要指定的类型之一匹配，值就有效
     for (let i = 0; i < types.length && !isValid; i++) {
       const { valid, expectedType } = assertType(value, types[i])
       expectedTypes.push(expectedType || '')
@@ -617,6 +655,7 @@ function validateProp(
     }
   }
   // custom validator
+  // 自定义校验器
   if (validator && !validator(value)) {
     warn('Invalid prop: custom validator check failed for prop "' + name + '".')
   }

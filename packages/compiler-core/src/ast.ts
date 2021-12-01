@@ -23,16 +23,16 @@ export const enum Namespaces {
 }
 
 export const enum NodeTypes {
-  ROOT,
-  ELEMENT,
-  TEXT,
-  COMMENT,
-  SIMPLE_EXPRESSION,
-  INTERPOLATION,
-  ATTRIBUTE,
+  ROOT,                // 根节点
+  ELEMENT,             // 元素节点
+  TEXT,                // 文本节点
+  COMMENT,             // 注释节点
+  SIMPLE_EXPRESSION,   // 简单表达式
+  INTERPOLATION,       // 插值表达式
+  ATTRIBUTE,           // 属性
   DIRECTIVE,
   // containers
-  COMPOUND_EXPRESSION,
+  COMPOUND_EXPRESSION,  // 复合表达式   {{msg + age}} 这种会被处理成一个复合表达式容器包裹
   IF,
   IF_BRANCH,
   FOR,

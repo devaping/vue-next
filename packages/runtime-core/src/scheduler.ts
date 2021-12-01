@@ -32,8 +32,9 @@ export interface SchedulerJob extends Function {
 }
 
 export type SchedulerJobs = SchedulerJob | SchedulerJob[]
-
+// 异步任务队列是否正在执行
 let isFlushing = false
+// 异步任务队列是否等待执行 
 let isFlushPending = false
 
 const queue: SchedulerJob[] = []
@@ -183,6 +184,7 @@ export function flushPreFlushCbs(
 
 export function flushPostFlushCbs(seen?: CountMap) {
   if (pendingPostFlushCbs.length) {
+    // 拷贝副本 
     const deduped = [...new Set(pendingPostFlushCbs)]
     pendingPostFlushCbs.length = 0
 
@@ -204,6 +206,7 @@ export function flushPostFlushCbs(seen?: CountMap) {
       postFlushIndex < activePostFlushCbs.length;
       postFlushIndex++
     ) {
+      // 检测循环更新
       if (
         __DEV__ &&
         checkRecursiveUpdates(seen!, activePostFlushCbs[postFlushIndex])
@@ -236,6 +239,8 @@ function flushJobs(seen?: CountMap) {
   //    priority number)
   // 2. If a component is unmounted during a parent component's update,
   //    its update can be skipped.
+  // 组件的更新是先父后子 
+  // 如果一个组件在父组件更新过程中卸载，它自身的更新应该被跳过 
   queue.sort((a, b) => getId(a) - getId(b))
 
   // conditional usage of checkRecursiveUpdate must be determined out of
@@ -268,6 +273,7 @@ function flushJobs(seen?: CountMap) {
     currentFlushPromise = null
     // some postFlushCb queued jobs!
     // keep flushing until it drains.
+    // 一些 postFlushCb 执行过程中会再次添加异步任务，递归 flushJobs 会把它们都执行完毕
     if (
       queue.length ||
       pendingPreFlushCbs.length ||

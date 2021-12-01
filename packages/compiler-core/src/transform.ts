@@ -151,6 +151,7 @@ export function createTransformContext(
   const nameMatch = filename.replace(/\?.*$/, '').match(/([^/\\]+)\.\w+$/)
   const context: TransformContext = {
     // options
+    // 配置
     selfName: nameMatch && capitalize(camelize(nameMatch[1])),
     prefixIdentifiers,
     hoistStatic,
@@ -174,6 +175,7 @@ export function createTransformContext(
     compatConfig,
 
     // state
+    // 状态相关
     root,
     helpers: new Map(),
     components: new Set(),
@@ -190,9 +192,9 @@ export function createTransformContext(
       vPre: 0,
       vOnce: 0
     },
-    parent: null,
-    currentNode: root,
-    childIndex: 0,
+    parent: null,       // 当前 AST 节点的父节点
+    currentNode: root,  // 当前处理的 AST 节点
+    childIndex: 0,      // 当前 AST 节点在子节点中的索引位置
     inVOnce: false,
 
     // methods
@@ -243,15 +245,18 @@ export function createTransformContext(
       }
       if (!node || node === context.currentNode) {
         // current node removed
+        // 移除当前节点
         context.currentNode = null
         context.onNodeRemoved()
       } else {
         // sibling node removed
+        // 移除兄弟节点
         if (context.childIndex > removalIndex) {
           context.childIndex--
           context.onNodeRemoved()
         }
       }
+      // 移除节点
       context.parent!.children.splice(removalIndex, 1)
     },
     onNodeRemoved: () => {},
@@ -315,11 +320,15 @@ export function createTransformContext(
 }
 
 export function transform(root: RootNode, options: TransformOptions) {
+  // 创建转换上下文
   const context = createTransformContext(root, options)
+  // 从根节点递归遍历ast
   traverseNode(root, context)
+  // 静态提升
   if (options.hoistStatic) {
     hoistStatic(root, context)
   }
+  // 创建根代码生成节点
   if (!options.ssr) {
     createRootCodegen(root, context)
   }
@@ -343,6 +352,7 @@ function createRootCodegen(root: RootNode, context: TransformContext) {
   if (children.length === 1) {
     const child = children[0]
     // if the single child is an element, turn it into a block.
+    // 如果子节点是单个元素节点，则将其转换成一个 block
     if (isSingleElementRoot(root, child) && child.codegenNode) {
       // single element root is never hoisted so codegenNode will never be
       // SimpleExpressionNode
@@ -359,6 +369,7 @@ function createRootCodegen(root: RootNode, context: TransformContext) {
     }
   } else if (children.length > 1) {
     // root has multiple nodes - return a fragment block.
+    // 如果子节点是多个节点，则返回一个 fragement 的代码生成节点
     let patchFlag = PatchFlags.STABLE_FRAGMENT
     let patchFlagText = PatchFlagNames[PatchFlags.STABLE_FRAGMENT]
     // check if the fragment actually contains a single valid child with
@@ -409,11 +420,14 @@ export function traverseNode(
   node: RootNode | TemplateChildNode,
   context: TransformContext
 ) {
+  // 记录当前ast节点
   context.currentNode = node
   // apply transform plugins
+  // 节点转换函数
   const { nodeTransforms } = context
   const exitFns = []
   for (let i = 0; i < nodeTransforms.length; i++) {
+    // 有些转换函数会设计一个退出函数，在处理完子节点后执行
     const onExit = nodeTransforms[i](node, context)
     if (onExit) {
       if (isArray(onExit)) {
@@ -424,9 +438,11 @@ export function traverseNode(
     }
     if (!context.currentNode) {
       // node was removed
+      // 节点被移除
       return
     } else {
       // node may have been replaced
+      // 因为在转换的过程中节点可能被替换，恢复到之前的节点
       node = context.currentNode
     }
   }
@@ -436,17 +452,20 @@ export function traverseNode(
       if (!context.ssr) {
         // inject import for the Comment symbol, which is needed for creating
         // comment nodes with `createVNode`
+        // 需要导入 createComment 辅助函数
         context.helper(CREATE_COMMENT)
       }
       break
     case NodeTypes.INTERPOLATION:
       // no need to traverse, but we need to inject toString helper
       if (!context.ssr) {
+        // 需要导入 toString 辅助函数
         context.helper(TO_DISPLAY_STRING)
       }
       break
 
     // for container types, further traverse downwards
+     // 递归遍历每个分支节点
     case NodeTypes.IF:
       for (let i = 0; i < node.branches.length; i++) {
         traverseNode(node.branches[i], context)
@@ -456,12 +475,14 @@ export function traverseNode(
     case NodeTypes.FOR:
     case NodeTypes.ELEMENT:
     case NodeTypes.ROOT:
+       // 遍历子节点
       traverseChildren(node, context)
       break
   }
 
   // exit transforms
   context.currentNode = node
+   // 执行转换函数返回的退出函数
   let i = exitFns.length
   while (i--) {
     exitFns[i]()
@@ -477,10 +498,12 @@ export function createStructuralDirectiveTransform(
     : (n: string) => name.test(n)
 
   return (node, context) => {
+     // 只处理元素节点
     if (node.type === NodeTypes.ELEMENT) {
       const { props } = node
       // structural directive transforms are not concerned with slots
       // as they are handled separately in vSlot.ts
+      // 结构化指令的转换与插槽无关，插槽相关处理逻辑在 vSlot.ts 中
       if (node.tagType === ElementTypes.TEMPLATE && props.some(isVSlot)) {
         return
       }
@@ -491,6 +514,7 @@ export function createStructuralDirectiveTransform(
           // structural directives are removed to avoid infinite recursion
           // also we remove them *before* applying so that it can further
           // traverse itself in case it moves the node around
+          // 删除结构指令以避免无限递归
           props.splice(i, 1)
           i--
           const onExit = fn(node, prop, context)

@@ -1,0 +1,56 @@
+<script src="../../dist/vue.global.js"></script>
+
+
+
+<!-- the app root element -->
+<ul id="demo">
+    <!-- count: {{count}} 
+    <br />
+    -->
+    plusOne: {{plusOne}}
+    <button @click="onClick">点我</button>
+</ul>
+
+<script>
+    const { ref, computed,reactive } = Vue
+    Vue.createApp({
+        setup() {
+            let state = reactive({count:0})
+            let plusOne = computed(() => state.count);
+
+
+            let onClick = () => {
+                count.value++
+            }
+
+            return {
+                state,
+                plusOne,
+                onClick
+            }
+        }
+
+
+    }).mount('#demo')
+</script>
+
+<style>
+    body {
+        font-family: Menlo, Consolas, monospace;
+        color: #444;
+    }
+
+    .item {
+        cursor: pointer;
+    }
+
+    .bold {
+        font-weight: bold;
+    }
+
+    ul {
+        padding-left: 1em;
+        line-height: 1.5em;
+        list-style-type: dot;
+    }
+</style>

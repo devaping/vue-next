@@ -38,18 +38,25 @@ import { IS_REF, UNREF } from '../runtimeHelpers'
 import { BindingTypes } from '../options'
 
 const isLiteralWhitelisted = /*#__PURE__*/ makeMap('true,false,null,this')
-
+// TODO:只有在 Node.js 环境下的编译或者是 Web 端的非生产环境下才会执行 transformExpression
 export const transformExpression: NodeTransform = (node, context) => {
   if (node.type === NodeTypes.INTERPOLATION) {
+    // 处理插值中的动态表达式
+    /* processExpression这个过程有一定的成本，因为它内部依赖了 @babel/parser 库去解析表达式生成 AST 节点，
+    * 并依赖了 estree-walker 库去遍历这个 AST 节点，然后对节点分析去判断是否需要加前缀，
+    * 接着对 AST 节点修改，最终转换生成新的表达式对象。
+    */
     node.content = processExpression(
       node.content as SimpleExpressionNode,
       context
     )
   } else if (node.type === NodeTypes.ELEMENT) {
     // handle directives on element
+    // 处理元素指令中的动态表达式
     for (let i = 0; i < node.props.length; i++) {
       const dir = node.props[i]
       // do not process for v-on & v-for since they are special handled
+      // v-on 和 v-for 不处理，因为它们都有各自的处理逻辑
       if (dir.type === NodeTypes.DIRECTIVE && dir.name !== 'for') {
         const exp = dir.exp
         const arg = dir.arg

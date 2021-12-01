@@ -1,0 +1,92 @@
+<script src="../../dist/vue.global.js"></script>
+
+<!-- item template -->
+<script type="text/x-template" id="item-template">
+    <div class="layout">
+        <header>
+          <slot name="header"></slot>
+        </header>
+        <main>
+          <slot></slot>
+        </main>
+        <footer>
+          <slot name="footer"></slot>
+        </footer>
+      </div>
+</script>
+ 
+<!-- item script -->
+<script>
+  const { reactive, computed, toRefs,toRef } = Vue
+   
+  const Helloword = {
+    name: 'helloword', // necessary for self-reference
+    template: '#item-template',
+    props: {
+      
+    },
+    setup(props) {
+  
+      return {
+     
+        // msg: props.msg
+      }
+    }
+  }
+
+</script>
+
+<!-- the app root element -->
+<ul id="demo">
+  
+    <Helloword  class="item" >
+        <template v-slot:header>
+            <h1>{{ header }}</h1>
+          </template>
+        
+          <template v-slot:default>
+            <p>{{ main }}</p>
+           
+          </template>
+        
+          <template v-slot:footer>
+            <p>{{ footer }}</p>
+          </template>
+    </Helloword>
+</ul>
+
+<script>
+
+  Vue.createApp({
+    name:'rootComponent',
+    components: {
+        Helloword
+    },
+    data: () => ({
+        header: 'Here might be a page title',
+        main: 'A paragraph for the main content.',
+        footer: 'Here\'s some contact info'
+    })
+  }).mount('#demo')
+</script>
+
+<style>
+  body {
+    font-family: Menlo, Consolas, monospace;
+    color: #444;
+  }
+
+  .item {
+    cursor: pointer;
+  }
+
+  .bold {
+    font-weight: bold;
+  }
+
+  ul {
+    padding-left: 1em;
+    line-height: 1.5em;
+    list-style-type: dot;
+  }
+</style>

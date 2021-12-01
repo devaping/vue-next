@@ -121,6 +121,7 @@ const TransitionGroupImpl: ComponentOptions = {
       for (let i = 0; i < children.length; i++) {
         const child = children[i]
         if (child.key != null) {
+          // vnode.transition = hooks
           setTransitionHooks(
             child,
             resolveTransitionHooks(child, cssTransitionProps, state, instance)

@@ -1,0 +1,96 @@
+<script src="../../dist/vue.global.js"></script>
+
+<!-- item template -->
+<script type="text/x-template" id="item-template">
+    <div v-show="visible" class="dialog">
+      <div class="dialog-body">
+        <p>I'm a dialog!</p>
+        <button @click="visible=false">Close</button>
+      </div>
+    </div>
+  </script>
+<script>
+    let CompA = {
+        template: `is a compA`,
+        name: 'compA',
+        data() {
+            return {
+                visible: false
+            }
+        },
+        unmounted(){
+            debugger
+            console.log('unmounted compA')
+        },
+        methods: {
+            toggle() {
+                this.visible = !this.visible
+            }
+        }
+    }
+    let CompC = {
+        template: `is a CompC`,
+        name: 'CompC',
+        activated(){
+            
+            console.log(this);
+            console.log('CompC activated');
+        },
+        deactivated(){
+            console.log('CompC deactivated');
+        }
+    }
+    let CompB = {
+        components:{
+            CompC
+        },
+        template: `is a compB <br/><comp-c></comp-c>`,
+        name: 'compB',
+        data() {
+            return {
+                visible: false
+            }
+        },
+        unmounted(){
+            debugger
+            console.log('unmounted compB')
+        },
+        methods: {
+            toggle() {
+                this.visible = !this.visible
+            }
+        }
+    }
+
+</script>
+ 
+
+
+<div id="app">
+    <keep-alive v-if="aliveFlag">
+        <comp-a v-if="flag" key='comp-a'></comp-a>
+        <comp-b v-else key="comp-b"></comp-b>
+    </keep-alive>
+    <button @click="flag=!flag">toggle</button>
+    <button @click="aliveFlag=!aliveFlag">toggle keep-alive</button>
+</div>
+<div id="new-target"></div>
+<script>
+    const { reactive, computed, toRefs, toRef } = Vue
+
+    Vue.createApp({
+        components: {
+            CompA,
+            CompB
+        },
+        data() {
+            return {
+                aliveFlag:true,
+                flag: true
+            }
+        },
+        methods: {
+           
+        }
+    }).mount('#app')
+</script>
